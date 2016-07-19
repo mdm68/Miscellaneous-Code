@@ -1,0 +1,119 @@
+#-------------------------------------------------------------------------------
+# Name:        module1
+# Purpose:
+#
+# Author:      Moni
+#
+# Created:     24/03/2013
+# Copyright:   (c) Moni 2013
+# Licence:     <your licence>
+#-------------------------------------------------------------------------------
+
+import os
+from pyPdf import PdfFileReader
+import miner
+import numpy as np
+
+
+def Names(bioInfo,beauty):
+     a = os.listdir(bioInfo)
+     b=os.listdir(beauty)
+     list1=[]
+     list2=[]
+     for i in a:
+        file1 = bioInfo +'/'+i
+        list1.append(file1)
+     for j in b:
+        file2 = beauty +'/'+j
+        list2.append(file2)
+     return list1, list2
+
+
+def Texts(l1,l2):
+    d1=[]
+    d2=[]
+    for i in range(len(l1)):
+     fp = file( l1[i] ).read()
+     hp=miner.Hoover(fp)
+     fp2=file (l2[i]).read()
+     hp1=miner.Hoover(fp2)
+     d1.append(hp)
+     d2.append(hp1)
+    return d1,d2
+
+
+def MakeDictionaries(d1,d2):
+    list1=[]
+    list2=[]
+    for i in range(len(d1)):
+        dict1=miner.FiveLetterDict(d1[i])
+        list1.append(dict1)
+    for i in range(len(d2)):
+        dict2=miner.FiveLetterDict(d2[i])
+        list2.append(dict2)
+    list1.extend(list2)
+    return list1
+
+
+def GoodWords(list1):
+    ND = len( list1 )
+    gwords = []
+    for i in range( ND ):
+        gwords = gwords + list1[i].keys()
+    gwords = set( gwords )
+    gwords = list( gwords )
+    return gwords
+
+def MakeMatrices(list1,gw1):
+
+    wcmat=miner.WordCountMat(list1,gw1)
+    wfmat=miner.WordFreqMat(wcmat)
+    pvec=miner.WordProb(wcmat)
+    return wcmat, wfmat, pvec
+
+
+def Prune(wcmat, goodwords,mindoc=7):# to select only words which show up in more than 7 doc atleast
+    ngw=[]
+    bmat=wcmat>0
+    nc=bmat.sum(0) # no of docs each word os in
+    hits=(nc>=mindoc).nonzero()[0]
+    for i in hits:
+        ngw.append(goodwords[i])
+    return ngw
+
+def Indicatives(wcmat, wfmat, pvec,ngw,pdoc,ndoc):
+    v=wcmat/pvec
+    order, score=miner.IndicWords(wcmat, v, pdoc, ndoc, mincount=5)
+    score=score+1e-9
+    lscores=np.log(score)
+    gwords3=[]
+    ndx=(lscores>2.0).nonzero()[0]
+    for i in range(len(ndx)):
+        gwords3.append(ngw[i])
+    ndx=(lscores<-2.0).nonzero()[0]
+    for i in range(len(ndx)):
+        gwords3.append(ngw[i])
+    return gwords3
+
+
+#------------------------------- code to convert PDFs to Texts starts------------------------------#
+def ReadPDF(filename):
+    for i in filename:
+        input = PdfFileReader(file(filename, "rb"))
+        for page in input.pages:
+            data=page.extractText()
+        #file.write("abc"+.txt)
+        return data
+
+def Call():
+    f= open('test.txt','w')
+    pdfl = ReadPDF("1.pdf").encode("ascii", "ignore")
+    f.write(pdfl)
+    f.close()
+#------------------------------- code to convert PDFs to Texts ends------------------------------#
+
+
+
+
+
+
